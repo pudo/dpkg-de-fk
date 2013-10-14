@@ -1,3 +1,5 @@
+import sys
+
 import logging
 import requests
 from lxml import html
@@ -73,9 +75,11 @@ def get_offset(session, offset):
             session = run_query()
 
 
-def get_fkzs():
+def get_fkzs(start_offset=0):
     count, session = run_query()
     for i, offset in enumerate(xrange(1, count, PAGE)):
+        if offset < start_offset:
+            continue
         doc = get_offset(session, offset)
         for fkz in doc.findall(XPATH):
             yield fkz.get('href').rsplit('fkz=')[-1]
@@ -108,8 +112,13 @@ def get_by_fkz(fkz):
             pass
 
 
-def scrape():
-    for fkz in get_fkzs():
+def scrape(offset=0, start_fkz=None):
+    found = start_fkz is not None
+    for fkz in get_fkzs(int(offset)):
+        if not found:
+            if start_fkz == fkz:
+                found = True
+            continue
         row = table.find_one(fkz=fkz)
         if row is not None:
             log.debug("FKZ exists: %s", fkz)
@@ -120,5 +129,5 @@ def scrape():
 
 
 if __name__ == '__main__':
-    scrape()
-    #get_by_fkz(requests, '0315844A')
+    scrape(*sys.argv[1:])
+    # get_by_fkz(requests, '0315844A')
